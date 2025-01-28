@@ -17,7 +17,6 @@
 #include "util/ferm/subset_vectors.h"
 #include "util/ferm/superb_contractions.h"
 
-
 const size_t num_vecs = 96;
 
 using namespace Chroma;
@@ -35,10 +34,12 @@ extern "C" {
 
 namespace Chroma::InlineMesonMatElemColorVecSuperbEnv{
 	    struct KeyMesonElementalOperator_t {
-      int t_slice;		 /*!< Meson operator time slice */
-      multi1d<int> displacement; /*!< Displacement dirs of right colorstd::vector */
-      multi1d<int> mom;		 /*!< D-1 momentum of this operator */
+      int t_slice;		            /*!< Meson operator time slice */
+      multi1d<int> displacement;  /*!< Displacement dirs of right colorstd::vector */
+      multi1d<int> mom;		        /*!< D-1 momentum of this operator */
     };
+
+    // int Ns = num_vecs -1 ; 
 
     //! Meson operator, colorstd::vector source and sink with momentum projection
     struct ValMesonElementalOperator_t : public SB::Tensor<2, SB::ComplexD> {
@@ -173,6 +174,16 @@ int main(int argc, char *argv[])
   Chroma::initialize(&argc, &argv);
   
   START_CODE();
+    std::string sdb_file = argv[1];
+
+    QDPIO::cout << "Number of vectors: " << num_vecs << std::endl;
+
+    // Extract the prefix and create the HDF5 file
+    std::string h5_file_prefix = sdb_file.substr(0, sdb_file.find_last_of('.'));
+    std::string h5_file = h5_file_prefix + ".h5";
+
+    QDPIO::cout << "SDB file: " << sdb_file << std::endl;
+    QDPIO::cout << "HDF5 file: " << h5_file << std::endl;
 
   QDPIO::cout << "Linkage = " << linkageHack() << std::endl;
 
@@ -426,45 +437,11 @@ int main(int argc, char *argv[])
   
 // HERE BE DRAGONS
 
-// <elem>
-//       <Name>PROP_MATELEM_COLORVEC</Name>
-//       <Frequency>1</Frequency>
-//       <Param>
-//         <num_vecs>10</num_vecs>
-//         <t_sources>0 3</t_sources>
-//         <decay_dir>3</decay_dir>
-//         <mass_label>U0.05</mass_label>
-//       </Param>
-//       <NamedObject>
-//         <gauge_id>default_gauge_field</gauge_id>
-//         <colorvec_id>eigeninfo_0</colorvec_id>
-//         <prop_id>prop_colorvec</prop_id>
-//         <prop_op_file>prop.sdb</prop_op_file>
-//       </NamedObject>
-//     </elem>
-
-// struct KeyMesonElementalOperator_t {
-//       int t_slice;		 /*!< Meson operator time slice */
-//       multi1d<int> displacement; /*!< Displacement dirs of right colorstd::vector */
-//       multi1d<int> mom;		 /*!< D-1 momentum of this operator */
-//     };
-
-//     //! Meson operator, colorstd::vector source and sink with momentum projection
-//     struct ValMesonElementalOperator_t : public SB::Tensor<2, SB::ComplexD> {
-//       int type_of_data; /*!< Flag indicating type of data (maybe trivial) */
-//       ValMesonElementalOperator_t(int n = 0, int type_of_data = COLORVEC_MATELEM_TYPE_GENERIC)
-// 	: SB::Tensor<2, SB::ComplexD>("ij", {n, n}, SB::OnHost, SB::Local),
-// 	  type_of_data(type_of_data)
-//       {
-//       }
-//     };
-
-
   std::cout << "creating obj"<< std::endl;
   BinaryStoreDB<SerialDBKey<InlineMesonMatElemColorVecSuperbEnv::KeyMesonElementalOperator_t>, SerialDBData<InlineMesonMatElemColorVecSuperbEnv::ValMesonElementalOperator_t>> qdp_db;
 
   std::cout << "opening file"<< std::endl;
-  qdp_db.open("res/meson.sdb", O_RDONLY, 0664);
+  qdp_db.open(sdb_file, O_RDONLY, 0664);
 
   std::vector<SerialDBKey<InlineMesonMatElemColorVecSuperbEnv::KeyMesonElementalOperator_t>> keys;
 
@@ -473,11 +450,11 @@ int main(int argc, char *argv[])
 
   int key_idx = 0;
 
-  InlineMesonMatElemColorVecSuperbEnv::ValMesonElementalOperator_t data((96), COLORVEC_MATELEM_TYPE_DERIV); 
+  InlineMesonMatElemColorVecSuperbEnv::ValMesonElementalOperator_t data(num_vecs, COLORVEC_MATELEM_TYPE_DERIV); 
   SerialDBData<InlineMesonMatElemColorVecSuperbEnv::ValMesonElementalOperator_t> val(data);
 
 
-  QDP::HDF5Writer h5file("res/meson.h5");
+  QDP::HDF5Writer h5file(h5_file);
   multi2d<double> mat(num_vecs, num_vecs);
 
 
@@ -488,9 +465,6 @@ int main(int argc, char *argv[])
     std::cout << "\tdisplacement "<< k.key().displacement.size() << std::endl;
     std::cout << "\tmomentum     "<< k.key().mom.size() << std::endl;
 
-
-
-	
 	std::string path = "/t_slice_" + std::to_string(k.key().t_slice);
 	std::string mom = "mom_" + std::to_string(k.key().mom[0]) + "_" + std::to_string(k.key().mom[1]) + "_" + std::to_string(k.key().mom[2]);
 
@@ -511,14 +485,18 @@ int main(int argc, char *argv[])
 
 	for(int i = 0; i < num_vecs; i++){
 		for(int j = 0; j < num_vecs; j++){
-			mat(i, j) = val.data().get(SB::Coor<2UL>{i, j}).real();
+      mat(i, j) = val.data().data()[i*num_vecs+ j].real();
+
+			// mat(i, j) = val.data().get(SB::Coor<2UL>{i, j}).real();
 		}
 	}
 	h5file.write("real", mat);
 	
 	for(int i = 0; i < num_vecs; i++){
 		for(int j = 0; j < num_vecs; j++){
-			mat(i, j) = val.data().get(SB::Coor<2UL>{i, j}).imag();
+      mat(i, j) = val.data().data()[i*num_vecs+ j].imag();
+
+			// mat(i, j) = val.data().get(SB::Coor<2UL>{i, j}).imag();
 		}
 	}
 	h5file.write("imag", mat);
@@ -538,4 +516,5 @@ int main(int argc, char *argv[])
   Chroma::finalize();
   exit(0);
 }
+
 
