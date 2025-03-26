@@ -11,15 +11,15 @@ rm -rf $INSTALL_DIR/$PKG
 mkdir $BUILD_DIR/$PKG
 mkdir $INSTALL_DIR/$PKG
 
-#pushd $SOURCE_DIR
-#git clone --recursive --branch devel https://github.com/JeffersonLab/qdp-jit.git $PKG
-#popd
+pushd $SOURCE_DIR
+git clone --recursive --branch devel https://github.com/JeffersonLab/qdp-jit.git $PKG
+popd
 
 #cp 0001-hdf5-fix.patch $SOURCE_DIR/$PKG
 
-#pushd $SOURCE_DIR/$PKG
+pushd $SOURCE_DIR/$PKG
 #git apply 0001-hdf5-fix.patch
-#popd
+popd
 
 pushd $BUILD_DIR/$PKG
 $CMAKE -DCMAKE_C_FLAGS="-march=native -fopenmp -fPIC -O2 -DH5_USE_110_API"        \

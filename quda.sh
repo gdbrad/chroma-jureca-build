@@ -4,7 +4,7 @@ source config.sh
 
 PKG=quda
 
-rm -rf $SOURCE_DIR/$PKG
+#rm -rf $SOURCE_DIR/$PKG
 rm -rf $BUILD_DIR/$PKG
 rm -rf $INSTALL_DIR/$PKG
 

@@ -1,10 +1,10 @@
 #!/bin/bash
 
 # Set the proper environment file depending on the machine
-source ./machines/env-new-jureca-gpu.sh
+source ./env-jureca.sh
 
 # Base directory for installation
-export BASE_DIR=/p/scratch/exotichadrons/chroma-distillation
+export BASE_DIR=/p/scratch/exotichadrons/chroma-distillation-superb
 
 # Make required paths
 export SOURCE_DIR=$BASE_DIR/source
